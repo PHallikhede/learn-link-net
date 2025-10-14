@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { GraduationCap } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const colleges = [
   "MIT - Massachusetts Institute of Technology",
@@ -24,6 +26,7 @@ const colleges = [
 
 const Auth = () => {
   const navigate = useNavigate();
+  const { user, signIn, signUp } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   
   // Login state
@@ -34,19 +37,31 @@ const Auth = () => {
   const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
-  const [userType, setUserType] = useState<"student" | "alumni" | "">("");
+  const [userType, setUserType] = useState<"student" | "alumni" | "admin" | "">("");
   const [college, setCollege] = useState("");
+  const [company, setCompany] = useState("");
+  const [branch, setBranch] = useState("");
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate login
-    setTimeout(() => {
+    const { error } = await signIn(loginEmail, loginPassword);
+    
+    if (error) {
+      toast.error(error.message || "Login failed. Please check your credentials.");
+      setIsLoading(false);
+    } else {
       toast.success("Login successful!");
       navigate("/dashboard");
-      setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -59,12 +74,51 @@ const Auth = () => {
     
     setIsLoading(true);
     
-    // Simulate signup
-    setTimeout(() => {
+    try {
+      const { error } = await signUp(signupEmail, signupPassword, {
+        full_name: signupName,
+        college: college,
+      });
+      
+      if (error) {
+        toast.error(error.message || "Signup failed");
+        setIsLoading(false);
+        return;
+      }
+
+      // Add user role
+      const { data: { user: newUser } } = await supabase.auth.getUser();
+      if (newUser) {
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .insert({ user_id: newUser.id, role: userType });
+
+        if (roleError) {
+          console.error("Error adding role:", roleError);
+        }
+
+        // Add role-specific details
+        if (userType === "student") {
+          await supabase.from("student_details").insert({
+            user_id: newUser.id,
+            branch: branch || null,
+          });
+        } else if (userType === "alumni") {
+          await supabase.from("alumni_details").insert({
+            user_id: newUser.id,
+            company: company || null,
+            verification_status: "pending",
+          });
+        }
+      }
+
       toast.success("Account created successfully!");
       navigate("/dashboard");
+    } catch (error) {
+      console.error("Signup error:", error);
+      toast.error("An unexpected error occurred");
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -164,6 +218,7 @@ const Auth = () => {
                       <SelectContent>
                         <SelectItem value="student">Student</SelectItem>
                         <SelectItem value="alumni">Alumni</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -182,6 +237,30 @@ const Auth = () => {
                       </SelectContent>
                     </Select>
                   </div>
+                  {userType === "student" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="branch">Branch (Optional)</Label>
+                      <Input
+                        id="branch"
+                        type="text"
+                        placeholder="e.g., Computer Science"
+                        value={branch}
+                        onChange={(e) => setBranch(e.target.value)}
+                      />
+                    </div>
+                  )}
+                  {userType === "alumni" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="company">Company (Optional)</Label>
+                      <Input
+                        id="company"
+                        type="text"
+                        placeholder="e.g., Google"
+                        value={company}
+                        onChange={(e) => setCompany(e.target.value)}
+                      />
+                    </div>
+                  )}
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "Creating account..." : "Create Account"}
                   </Button>

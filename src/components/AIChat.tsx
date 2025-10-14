@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Bot, Send, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Message {
   id: number;
@@ -21,7 +23,7 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
-      text: "Hi! I'm your AI assistant. I can help you with career guidance, technical questions, and course recommendations. How can I assist you today?",
+      text: "Hi! I'm your AI assistant for IntelliConnect. I can help you with career guidance, technical questions, placement preparation, and skill development. How can I assist you today?",
       sender: "ai",
       timestamp: new Date(),
     },
@@ -29,7 +31,7 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
 
     const userMessage: Message = {
@@ -40,27 +42,41 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
     };
 
     setMessages([...messages, userMessage]);
+    const currentInput = input;
     setInput("");
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiResponses = [
-        "For Machine Learning preparation, I recommend focusing on: 1) Linear Algebra and Statistics, 2) Python programming, 3) Popular frameworks like TensorFlow and PyTorch. Would you like specific resource recommendations?",
-        "For web development, start with HTML, CSS, and JavaScript fundamentals. Then move to frameworks like React or Vue. I can connect you with alumni who specialize in web development if you'd like!",
-        "For placement preparation, focus on Data Structures & Algorithms, practice on platforms like LeetCode, and work on real projects. Alumni from top companies can provide insider tips!",
-      ];
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-chat", {
+        body: { message: currentInput },
+      });
+
+      if (error) {
+        if (error.message?.includes("429")) {
+          toast.error("Rate limit exceeded. Please try again in a moment.");
+        } else if (error.message?.includes("402")) {
+          toast.error("AI credits exhausted. Please contact support.");
+        } else {
+          toast.error("Failed to get AI response");
+        }
+        setIsTyping(false);
+        return;
+      }
 
       const aiMessage: Message = {
         id: messages.length + 2,
-        text: aiResponses[Math.floor(Math.random() * aiResponses.length)],
+        text: data.response,
         sender: "ai",
         timestamp: new Date(),
       };
 
       setMessages((prev) => [...prev, aiMessage]);
+    } catch (error) {
+      console.error("Error calling AI chat:", error);
+      toast.error("An error occurred. Please try again.");
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   if (!isOpen) return null;
@@ -106,7 +122,7 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
                       : "bg-muted"
                   }`}
                 >
-                  <p className="text-sm">{message.text}</p>
+                  <p className="text-sm whitespace-pre-wrap">{message.text}</p>
                   <p className="text-xs opacity-70 mt-1">
                     {message.timestamp.toLocaleTimeString([], {
                       hour: "2-digit",
@@ -137,8 +153,9 @@ const AIChat = ({ isOpen, onClose }: AIChatProps) => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && handleSend()}
+                disabled={isTyping}
               />
-              <Button size="icon" onClick={handleSend}>
+              <Button size="icon" onClick={handleSend} disabled={isTyping}>
                 <Send className="w-4 h-4" />
               </Button>
             </div>

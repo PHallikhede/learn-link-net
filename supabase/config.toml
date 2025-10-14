@@ -1,1 +1,7 @@
 project_id = "jpugkqlsbheamrivuehw"
+
+[functions.ai-chat]
+verify_jwt = false
+
+[functions.get-mentor-recommendations]
+verify_jwt = true

@@ -54,7 +54,7 @@ const Admin = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar isLoggedIn />
+      <Navbar />
       
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">

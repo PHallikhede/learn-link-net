@@ -14,16 +14,241 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      alumni_details: {
+        Row: {
+          company: string | null
+          graduation_year: number | null
+          id: string
+          job_title: string | null
+          user_id: string
+          verification_status: string | null
+        }
+        Insert: {
+          company?: string | null
+          graduation_year?: number | null
+          id?: string
+          job_title?: string | null
+          user_id: string
+          verification_status?: string | null
+        }
+        Update: {
+          company?: string | null
+          graduation_year?: number | null
+          id?: string
+          job_title?: string | null
+          user_id?: string
+          verification_status?: string | null
+        }
+        Relationships: []
+      }
+      connections: {
+        Row: {
+          alumni_id: string
+          created_at: string
+          id: string
+          status: string | null
+          student_id: string
+        }
+        Insert: {
+          alumni_id: string
+          created_at?: string
+          id?: string
+          status?: string | null
+          student_id: string
+        }
+        Update: {
+          alumni_id?: string
+          created_at?: string
+          id?: string
+          status?: string | null
+          student_id?: string
+        }
+        Relationships: []
+      }
+      forum_posts: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          id: string
+          tags: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          id?: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      forum_replies: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          id: string
+          post_id: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          id?: string
+          post_id: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_replies_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "forum_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_likes: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "forum_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          bio: string | null
+          college: string
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          interests: string[] | null
+          skills: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          bio?: string | null
+          college: string
+          created_at?: string
+          email: string
+          full_name: string
+          id: string
+          interests?: string[] | null
+          skills?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          bio?: string | null
+          college?: string
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          interests?: string[] | null
+          skills?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      student_details: {
+        Row: {
+          branch: string | null
+          goals: string | null
+          id: string
+          user_id: string
+          year: number | null
+        }
+        Insert: {
+          branch?: string | null
+          goals?: string | null
+          id?: string
+          user_id: string
+          year?: number | null
+        }
+        Update: {
+          branch?: string | null
+          goals?: string | null
+          id?: string
+          user_id?: string
+          year?: number | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "student" | "alumni" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +375,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["student", "alumni", "admin"],
+    },
   },
 } as const
