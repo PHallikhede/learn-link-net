@@ -6,7 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { User, Mail, Building2, Calendar, Edit2, Save, Loader2 } from "lucide-react";
+import {
+  User,
+  Mail,
+  Building2,
+  Calendar,
+  Edit2,
+  Save,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -42,7 +50,10 @@ const Profile = () => {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!user) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
       try {
         // Fetch profile data
@@ -97,6 +108,22 @@ const Profile = () => {
             company: alumniData?.company || "",
             graduation_year: alumniData?.graduation_year?.toString() || "",
           });
+        } else {
+          // If no role or admin, just set basic profile
+          setProfile({
+            full_name: profileData.full_name || "",
+            email: profileData.email || "",
+            college: profileData.college || "",
+            bio: profileData.bio || "",
+            interests: profileData.interests || [],
+            skills: profileData.skills || [],
+            year: "",
+            branch: "",
+            goals: "",
+            job_title: "",
+            company: "",
+            graduation_year: "",
+          });
         }
       } catch (error) {
         console.error("Error fetching profile:", error);
@@ -106,7 +133,7 @@ const Profile = () => {
       }
     };
 
-    if (!roleLoading && role) {
+    if (!roleLoading && user) {
       fetchProfile();
     }
   }, [user, role, roleLoading]);
@@ -147,7 +174,9 @@ const Profile = () => {
             user_id: user.id,
             job_title: profile.job_title,
             company: profile.company,
-            graduation_year: profile.graduation_year ? parseInt(profile.graduation_year) : null,
+            graduation_year: profile.graduation_year
+              ? parseInt(profile.graduation_year)
+              : null,
           });
 
         if (alumniError) throw alumniError;
@@ -175,12 +204,12 @@ const Profile = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-4xl font-bold">My Profile</h1>
           <Button
-            onClick={() => isEditing ? handleSave() : setIsEditing(true)}
+            onClick={() => (isEditing ? handleSave() : setIsEditing(true))}
             className="gap-2"
           >
             {isEditing ? (
@@ -202,27 +231,37 @@ const Profile = () => {
           <Card className="md:col-span-1 shadow-elevated h-fit">
             <CardContent className="pt-6">
               <div className="flex flex-col items-center text-center">
-              <div className="w-24 h-24 rounded-full bg-gradient-accent flex items-center justify-center mb-4">
+                <div className="w-24 h-24 rounded-full bg-gradient-accent flex items-center justify-center mb-4">
                   <User className="w-12 h-12 text-secondary-foreground" />
                 </div>
                 <h2 className="text-2xl font-bold mb-1">{profile.full_name}</h2>
                 <Badge className="mb-4">
-                  {role === "student" ? "Student" : role === "alumni" ? "Alumni" : "Admin"}
+                  {role === "student"
+                    ? "Student"
+                    : role === "alumni"
+                    ? "Alumni"
+                    : "Admin"}
                 </Badge>
                 <div className="w-full space-y-3 text-left">
                   <div className="flex items-center gap-2 text-sm">
                     <Mail className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">{profile.email}</span>
+                    <span className="text-muted-foreground">
+                      {profile.email}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Building2 className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">{profile.college}</span>
+                    <span className="text-muted-foreground">
+                      {profile.college}
+                    </span>
                   </div>
                   {role === "student" && profile.year && profile.branch && (
                     <>
                       <div className="flex items-center gap-2 text-sm">
                         <Calendar className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">{profile.year} - {profile.branch}</span>
+                        <span className="text-muted-foreground">
+                          {profile.year} - {profile.branch}
+                        </span>
                       </div>
                     </>
                   )}
@@ -242,7 +281,9 @@ const Profile = () => {
                 {isEditing ? (
                   <Textarea
                     value={profile.bio}
-                    onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+                    onChange={(e) =>
+                      setProfile({ ...profile, bio: e.target.value })
+                    }
                     rows={4}
                   />
                 ) : (
@@ -260,10 +301,18 @@ const Profile = () => {
                 <div>
                   <Label className="mb-2 block">Technical Skills</Label>
                   {isEditing ? (
-                    <Input 
+                    <Input
                       placeholder="Enter skills (comma separated)"
                       value={profile.skills.join(", ")}
-                      onChange={(e) => setProfile({ ...profile, skills: e.target.value.split(",").map(s => s.trim()).filter(s => s) })}
+                      onChange={(e) =>
+                        setProfile({
+                          ...profile,
+                          skills: e.target.value
+                            .split(",")
+                            .map((s) => s.trim())
+                            .filter((s) => s),
+                        })
+                      }
                     />
                   ) : (
                     <div className="flex flex-wrap gap-2">
@@ -278,10 +327,18 @@ const Profile = () => {
                 <div>
                   <Label className="mb-2 block">Interests</Label>
                   {isEditing ? (
-                    <Input 
+                    <Input
                       placeholder="Enter interests (comma separated)"
                       value={profile.interests.join(", ")}
-                      onChange={(e) => setProfile({ ...profile, interests: e.target.value.split(",").map(s => s.trim()).filter(s => s) })}
+                      onChange={(e) =>
+                        setProfile({
+                          ...profile,
+                          interests: e.target.value
+                            .split(",")
+                            .map((s) => s.trim())
+                            .filter((s) => s),
+                        })
+                      }
                     />
                   ) : (
                     <div className="flex flex-wrap gap-2">
@@ -306,7 +363,9 @@ const Profile = () => {
                   {isEditing ? (
                     <Textarea
                       value={profile.goals}
-                      onChange={(e) => setProfile({ ...profile, goals: e.target.value })}
+                      onChange={(e) =>
+                        setProfile({ ...profile, goals: e.target.value })
+                      }
                       rows={3}
                     />
                   ) : (
@@ -319,14 +378,20 @@ const Profile = () => {
             {/* Education/Career Details */}
             <Card className="shadow-card">
               <CardHeader>
-                <CardTitle>{role === "student" ? "Education" : "Career"}</CardTitle>
+                <CardTitle>
+                  {role === "student" ? "Education" : "Career"}
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {isEditing ? (
                   <>
                     <div>
                       <Label>College</Label>
-                      <Input value={profile.college} readOnly className="mt-1" />
+                      <Input
+                        value={profile.college}
+                        readOnly
+                        className="mt-1"
+                      />
                     </div>
                     {role === "student" ? (
                       <div className="grid grid-cols-2 gap-3">
@@ -334,7 +399,9 @@ const Profile = () => {
                           <Label>Year</Label>
                           <Input
                             value={profile.year}
-                            onChange={(e) => setProfile({ ...profile, year: e.target.value })}
+                            onChange={(e) =>
+                              setProfile({ ...profile, year: e.target.value })
+                            }
                             placeholder="e.g., 3"
                             className="mt-1"
                           />
@@ -343,42 +410,61 @@ const Profile = () => {
                           <Label>Branch</Label>
                           <Input
                             value={profile.branch}
-                            onChange={(e) => setProfile({ ...profile, branch: e.target.value })}
+                            onChange={(e) =>
+                              setProfile({ ...profile, branch: e.target.value })
+                            }
                             placeholder="e.g., Computer Science"
                             className="mt-1"
                           />
                         </div>
                       </div>
-                    ) : role === "alumni" && (
-                      <>
-                        <div>
-                          <Label>Job Title</Label>
-                          <Input
-                            value={profile.job_title}
-                            onChange={(e) => setProfile({ ...profile, job_title: e.target.value })}
-                            placeholder="e.g., Software Engineer"
-                            className="mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label>Company</Label>
-                          <Input
-                            value={profile.company}
-                            onChange={(e) => setProfile({ ...profile, company: e.target.value })}
-                            placeholder="e.g., Google"
-                            className="mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label>Graduation Year</Label>
-                          <Input
-                            value={profile.graduation_year}
-                            onChange={(e) => setProfile({ ...profile, graduation_year: e.target.value })}
-                            placeholder="e.g., 2020"
-                            className="mt-1"
-                          />
-                        </div>
-                      </>
+                    ) : (
+                      role === "alumni" && (
+                        <>
+                          <div>
+                            <Label>Job Title</Label>
+                            <Input
+                              value={profile.job_title}
+                              onChange={(e) =>
+                                setProfile({
+                                  ...profile,
+                                  job_title: e.target.value,
+                                })
+                              }
+                              placeholder="e.g., Software Engineer"
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label>Company</Label>
+                            <Input
+                              value={profile.company}
+                              onChange={(e) =>
+                                setProfile({
+                                  ...profile,
+                                  company: e.target.value,
+                                })
+                              }
+                              placeholder="e.g., Google"
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label>Graduation Year</Label>
+                            <Input
+                              value={profile.graduation_year}
+                              onChange={(e) =>
+                                setProfile({
+                                  ...profile,
+                                  graduation_year: e.target.value,
+                                })
+                              }
+                              placeholder="e.g., 2020"
+                              className="mt-1"
+                            />
+                          </div>
+                        </>
+                      )
                     )}
                   </>
                 ) : (

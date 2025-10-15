@@ -1,17 +1,61 @@
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, Users, TrendingUp, Sparkles, User, BookOpen } from "lucide-react";
+import {
+  MessageSquare,
+  Users,
+  TrendingUp,
+  Sparkles,
+  User,
+  BookOpen,
+} from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 const Dashboard = () => {
+  const { user } = useAuth();
   const [userType] = useState<"student" | "alumni">("student"); // This would come from auth context
+
+  // Fetch user profile
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
 
   const stats = [
     { label: "Connections", value: "12", icon: Users, color: "text-primary" },
-    { label: "Forum Posts", value: "8", icon: MessageSquare, color: "text-secondary" },
-    { label: "Skills Shared", value: "5", icon: BookOpen, color: "text-accent" },
+    {
+      label: "Forum Posts",
+      value: "8",
+      icon: MessageSquare,
+      color: "text-secondary",
+    },
+    {
+      label: "Skills Shared",
+      value: "5",
+      icon: BookOpen,
+      color: "text-accent",
+    },
   ];
 
   const recommendations = [
@@ -39,23 +83,36 @@ const Dashboard = () => {
   ];
 
   const recentActivity = [
-    { action: "New connection request from", user: "Alex Thompson", time: "2 hours ago" },
-    { action: "Comment on your post", user: "Maria Garcia", time: "5 hours ago" },
-    { action: "New forum question in", user: "Web Development", time: "1 day ago" },
+    {
+      action: "New connection request from",
+      user: "Alex Thompson",
+      time: "2 hours ago",
+    },
+    {
+      action: "Comment on your post",
+      user: "Maria Garcia",
+      time: "5 hours ago",
+    },
+    {
+      action: "New forum question in",
+      user: "Web Development",
+      time: "1 day ago",
+    },
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background">
       <Navbar />
-      
+
       <div className="container mx-auto px-4 py-8">
         {/* Welcome Section */}
         <div className="mb-8 animate-fade-in">
           <h1 className="text-4xl font-bold mb-2">
-            Welcome back, John! 👋
+            Welcome back,{" "}
+            {profile?.full_name || user?.email?.split("@")[0] || "User"}! 👋
           </h1>
           <p className="text-muted-foreground">
-            {userType === "student" 
+            {userType === "student"
               ? "Continue your learning journey and connect with amazing alumni mentors."
               : "Share your expertise and guide the next generation of tech professionals."}
           </p>
@@ -64,14 +121,21 @@ const Dashboard = () => {
         {/* Stats Grid */}
         <div className="grid md:grid-cols-3 gap-6 mb-8 animate-slide-up">
           {stats.map((stat, index) => (
-            <Card key={index} className="shadow-card hover:shadow-elevated transition-all cursor-pointer">
+            <Card
+              key={index}
+              className="shadow-card hover:shadow-elevated transition-all cursor-pointer"
+            >
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
+                    <p className="text-sm text-muted-foreground mb-1">
+                      {stat.label}
+                    </p>
                     <p className="text-3xl font-bold">{stat.value}</p>
                   </div>
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-card flex items-center justify-center ${stat.color}`}>
+                  <div
+                    className={`w-12 h-12 rounded-xl bg-gradient-card flex items-center justify-center ${stat.color}`}
+                  >
                     <stat.icon className="w-6 h-6" />
                   </div>
                 </div>
@@ -89,7 +153,8 @@ const Dashboard = () => {
                 <CardTitle>AI-Powered Mentor Recommendations</CardTitle>
               </div>
               <CardDescription>
-                Alumni matched to your skills and interests using intelligent algorithms
+                Alumni matched to your skills and interests using intelligent
+                algorithms
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -104,11 +169,19 @@ const Dashboard = () => {
                     </div>
                     <div>
                       <h4 className="font-semibold">{mentor.name}</h4>
-                      <p className="text-sm text-muted-foreground">{mentor.role}</p>
-                      <p className="text-xs text-muted-foreground mb-2">{mentor.college}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {mentor.role}
+                      </p>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        {mentor.college}
+                      </p>
                       <div className="flex flex-wrap gap-1">
                         {mentor.skills.map((skill, i) => (
-                          <Badge key={i} variant="secondary" className="text-xs">
+                          <Badge
+                            key={i}
+                            variant="secondary"
+                            className="text-xs"
+                          >
                             {skill}
                           </Badge>
                         ))}
@@ -118,7 +191,9 @@ const Dashboard = () => {
                   <div className="flex flex-col items-end gap-2">
                     <div className="flex items-center gap-1 text-secondary">
                       <TrendingUp className="w-4 h-4" />
-                      <span className="text-sm font-semibold">{mentor.matchScore}%</span>
+                      <span className="text-sm font-semibold">
+                        {mentor.matchScore}%
+                      </span>
                     </div>
                     <Button size="sm">Connect</Button>
                   </div>
@@ -135,14 +210,19 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               {recentActivity.map((activity, index) => (
-                <div key={index} className="flex gap-3 pb-3 border-b last:border-0">
+                <div
+                  key={index}
+                  className="flex gap-3 pb-3 border-b last:border-0"
+                >
                   <div className="w-2 h-2 rounded-full bg-secondary mt-2" />
                   <div>
                     <p className="text-sm">
                       {activity.action}{" "}
                       <span className="font-semibold">{activity.user}</span>
                     </p>
-                    <p className="text-xs text-muted-foreground">{activity.time}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {activity.time}
+                    </p>
                   </div>
                 </div>
               ))}
