@@ -1,12 +1,35 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Users, TrendingUp, Sparkles, User, BookOpen } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
+import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
-  const [userType] = useState<"student" | "alumni">("student"); // This would come from auth context
+  const { user } = useAuth();
+  const { role } = useUserRole();
+  const [userName, setUserName] = useState("User");
+
+  useEffect(() => {
+    const fetchUserName = async () => {
+      if (!user) return;
+      
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .single();
+      
+      if (data?.full_name) {
+        setUserName(data.full_name.split(" ")[0]);
+      }
+    };
+
+    fetchUserName();
+  }, [user]);
 
   const stats = [
     { label: "Connections", value: "12", icon: Users, color: "text-primary" },
@@ -52,10 +75,10 @@ const Dashboard = () => {
         {/* Welcome Section */}
         <div className="mb-8 animate-fade-in">
           <h1 className="text-4xl font-bold mb-2">
-            Welcome back, John! 👋
+            Welcome back, {userName}! 👋
           </h1>
           <p className="text-muted-foreground">
-            {userType === "student" 
+            {role === "student" 
               ? "Continue your learning journey and connect with amazing alumni mentors."
               : "Share your expertise and guide the next generation of tech professionals."}
           </p>

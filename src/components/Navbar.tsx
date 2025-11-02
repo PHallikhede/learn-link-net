@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { GraduationCap, Search, MessageCircle, Menu, X, LogOut, User, Shield } from "lucide-react";
+import { GraduationCap, Search, MessageCircle, Menu, X, LogOut, User, Shield, Users } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   DropdownMenu,
@@ -49,6 +49,10 @@ const Navbar = () => {
                 <Link to="/search" className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
                   <Search className="w-4 h-4" />
                   Search Alumni
+                </Link>
+                <Link to="/connections" className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
+                  <Users className="w-4 h-4" />
+                  Connections
                 </Link>
                 <Link to="/forum" className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
                   <MessageCircle className="w-4 h-4" />
@@ -108,6 +112,10 @@ const Navbar = () => {
                 <Link to="/search" className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
                   <Search className="w-4 h-4" />
                   Search Alumni
+                </Link>
+                <Link to="/connections" className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
+                  <Users className="w-4 h-4" />
+                  Connections
                 </Link>
                 <Link to="/forum" className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
                   <MessageCircle className="w-4 h-4" />
