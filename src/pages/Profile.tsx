@@ -50,9 +50,15 @@ const Profile = () => {
           .from("profiles")
           .select("*")
           .eq("id", user.id)
-          .single();
+          .maybeSingle();
 
         if (profileError) throw profileError;
+
+        if (!profileData) {
+          toast.error("Profile not found");
+          setLoading(false);
+          return;
+        }
 
         // Fetch role-specific data
         if (role === "student") {
@@ -97,16 +103,32 @@ const Profile = () => {
             company: alumniData?.company || "",
             graduation_year: alumniData?.graduation_year?.toString() || "",
           });
+        } else {
+          // Admin or other roles - just show basic profile
+          setProfile({
+            full_name: profileData.full_name || "",
+            email: profileData.email || "",
+            college: profileData.college || "",
+            bio: profileData.bio || "",
+            interests: profileData.interests || [],
+            skills: profileData.skills || [],
+            year: "",
+            branch: "",
+            goals: "",
+            job_title: "",
+            company: "",
+            graduation_year: "",
+          });
         }
+        setLoading(false);
       } catch (error) {
         console.error("Error fetching profile:", error);
         toast.error("Failed to load profile data");
-      } finally {
         setLoading(false);
       }
     };
 
-    if (!roleLoading && role) {
+    if (user && !roleLoading) {
       fetchProfile();
     }
   }, [user, role, roleLoading]);
