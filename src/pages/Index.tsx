@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import AIChat from "@/components/AIChat";
@@ -16,10 +16,51 @@ import {
   Award,
   Bot
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const navigate = useNavigate();
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [stats, setStats] = useState({
+    users: 0,
+    alumni: 0,
+    connections: 0,
+    success: 0,
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // Fetch total users
+        const { count: usersCount } = await supabase
+          .from("profiles")
+          .select("*", { count: "exact", head: true });
+
+        // Fetch verified alumni
+        const { count: alumniCount } = await supabase
+          .from("alumni_details")
+          .select("*", { count: "exact", head: true })
+          .eq("verification_status", "verified");
+
+        // Fetch accepted connections
+        const { count: connectionsCount } = await supabase
+          .from("connections")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "accepted");
+
+        setStats({
+          users: usersCount || 0,
+          alumni: alumniCount || 0,
+          connections: connectionsCount || 0,
+          success: Math.floor((connectionsCount || 0) * 0.8),
+        });
+      } catch (error) {
+        console.error("Error fetching stats:", error);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   const features = [
     {
@@ -48,11 +89,11 @@ const Index = () => {
     },
   ];
 
-  const stats = [
-    { value: "1,200+", label: "Active Users" },
-    { value: "450+", label: "Alumni Mentors" },
-    { value: "2,000+", label: "Connections Made" },
-    { value: "500+", label: "Success Stories" },
+  const statsDisplay = [
+    { value: stats.users, label: "Active Users" },
+    { value: stats.alumni, label: "Alumni Mentors" },
+    { value: stats.connections, label: "Connections Made" },
+    { value: stats.success, label: "Success Stories" },
   ];
 
   const steps = [
@@ -133,7 +174,7 @@ const Index = () => {
       <section className="py-16 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => (
+            {statsDisplay.map((stat, index) => (
               <div key={index} className="text-center animate-slide-up" style={{ animationDelay: `${index * 0.1}s` }}>
                 <p className="text-4xl font-bold text-primary mb-2">{stat.value}</p>
                 <p className="text-muted-foreground">{stat.label}</p>

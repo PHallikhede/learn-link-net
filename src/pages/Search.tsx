@@ -53,6 +53,27 @@ const Search = () => {
     if (!user) return;
 
     try {
+      // Karnataka colleges list for filtering
+      const karnatakaColleges = [
+        "Bangalore Institute of Technology (BIT)",
+        "BMS College of Engineering (BMSCE)",
+        "RV College of Engineering (RVCE)",
+        "PES University",
+        "MS Ramaiah Institute of Technology (MSRIT)",
+        "Dayananda Sagar College of Engineering (DSCE)",
+        "BNM Institute of Technology (BNMIT)",
+        "Sir M Visvesvaraya Institute of Technology (MVIT)",
+        "National Institute of Technology Karnataka (NITK Surathkal)",
+        "JSS Science and Technology University",
+        "Manipal Institute of Technology (MIT Manipal)",
+        "KLE Technological University",
+        "SDM College of Engineering and Technology",
+        "Siddaganga Institute of Technology (SIT)",
+        "CMR Institute of Technology (CMRIT)",
+        "New Horizon College of Engineering",
+        "Atria Institute of Technology",
+      ];
+
       // Fetch all verified alumni
       const { data: alumniData, error: alumniError } = await supabase
         .from("alumni_details")
@@ -61,7 +82,7 @@ const Search = () => {
 
       if (alumniError) throw alumniError;
 
-      // Fetch profiles for each alumni
+      // Fetch profiles for each alumni and filter by Karnataka colleges
       const alumniProfiles = await Promise.all(
         (alumniData || []).map(async (alumni) => {
           const { data: profile } = await supabase
@@ -77,6 +98,11 @@ const Search = () => {
             .eq("student_id", user.id)
             .eq("alumni_id", alumni.user_id)
             .maybeSingle();
+
+          // Only include if from Karnataka college
+          if (!profile?.college || !karnatakaColleges.includes(profile.college)) {
+            return null;
+          }
 
           return {
             id: alumni.user_id,
@@ -94,7 +120,8 @@ const Search = () => {
         })
       );
 
-      setAlumni(alumniProfiles);
+      // Filter out null values (non-Karnataka colleges)
+      setAlumni(alumniProfiles.filter((profile) => profile !== null) as AlumniProfile[]);
     } catch (error) {
       console.error("Error fetching alumni:", error);
       toast.error("Failed to load alumni");
