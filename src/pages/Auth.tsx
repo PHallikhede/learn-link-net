@@ -83,10 +83,21 @@ const Auth = () => {
     setIsLoading(true);
     
     try {
-      const { error } = await signUp(signupEmail, signupPassword, {
+      // Pass all user data in metadata for the trigger to handle
+      const metadata: any = {
         full_name: signupName,
         college: college,
-      });
+        role: userType,
+      };
+
+      // Add role-specific metadata
+      if (userType === "student") {
+        metadata.branch = branch || null;
+      } else if (userType === "alumni") {
+        metadata.company = company || null;
+      }
+
+      const { error } = await signUp(signupEmail, signupPassword, metadata);
       
       if (error) {
         toast.error(error.message || "Signup failed");
@@ -94,32 +105,7 @@ const Auth = () => {
         return;
       }
 
-      // Add user role
-      const { data: { user: newUser } } = await supabase.auth.getUser();
-      if (newUser) {
-        const { error: roleError } = await supabase
-          .from("user_roles")
-          .insert({ user_id: newUser.id, role: userType });
-
-        if (roleError) {
-          console.error("Error adding role:", roleError);
-        }
-
-        // Add role-specific details
-        if (userType === "student") {
-          await supabase.from("student_details").insert({
-            user_id: newUser.id,
-            branch: branch || null,
-          });
-        } else if (userType === "alumni") {
-          await supabase.from("alumni_details").insert({
-            user_id: newUser.id,
-            company: company || null,
-            verification_status: "pending",
-          });
-        }
-      }
-
+      // Profile, role, and details are now created automatically by database trigger
       toast.success("Account created successfully!");
       navigate("/dashboard");
     } catch (error) {
