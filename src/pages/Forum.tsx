@@ -27,7 +27,7 @@ interface ForumPost {
 }
 
 const Forum = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [showNewPost, setShowNewPost] = useState(false);
   const [posts, setPosts] = useState<ForumPost[]>([]);
@@ -38,12 +38,15 @@ const Forum = () => {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    // Wait for auth to load before checking
+    if (authLoading) return;
+    
     if (!user) {
       navigate("/auth");
       return;
     }
     fetchPosts();
-  }, [user, navigate]);
+  }, [user, authLoading, navigate]);
 
   const fetchPosts = async () => {
     try {
@@ -177,7 +180,7 @@ const Forum = () => {
     }
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />

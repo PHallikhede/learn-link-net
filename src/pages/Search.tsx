@@ -27,8 +27,8 @@ interface AlumniProfile {
 }
 
 const Search = () => {
-  const { user } = useAuth();
-  const { role } = useUserRole();
+  const { user, loading: authLoading } = useAuth();
+  const { role, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [skillFilter, setSkillFilter] = useState("all");
@@ -37,17 +37,16 @@ const Search = () => {
   const [connectingIds, setConnectingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    // Wait for auth and role to load before checking
+    if (authLoading || roleLoading) return;
+    
     if (!user) {
       navigate("/auth");
       return;
     }
-    if (role === "alumni") {
-      toast.error("Alumni cannot search for mentors");
-      navigate("/dashboard");
-      return;
-    }
+    
     fetchAlumni();
-  }, [user, role]);
+  }, [user, role, authLoading, roleLoading]);
 
   const fetchAlumni = async () => {
     if (!user) return;
@@ -226,7 +225,7 @@ const Search = () => {
     );
   };
 
-  if (loading) {
+  if (loading || authLoading || roleLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />

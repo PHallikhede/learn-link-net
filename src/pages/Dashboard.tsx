@@ -11,8 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const Dashboard = () => {
-  const { user } = useAuth();
-  const { role } = useUserRole();
+  const { user, loading: authLoading } = useAuth();
+  const { role, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
   const [userName, setUserName] = useState("User");
   const [stats, setStats] = useState({
@@ -25,9 +25,15 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      if (!user) return;
-      
+    // Wait for auth and role to load
+    if (authLoading || roleLoading) return;
+    
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+    
+    const fetchDashboardData = async () => {      
       try {
         // Fetch user profile
         const { data: profile } = await supabase
@@ -127,7 +133,7 @@ const Dashboard = () => {
     };
 
     fetchDashboardData();
-  }, [user]);
+  }, [user, authLoading, roleLoading]);
 
   const handleConnect = async (alumniId: string) => {
     if (!user) return;
@@ -154,7 +160,7 @@ const Dashboard = () => {
     { label: "Skills Shared", value: stats.skillsShared.toString(), icon: BookOpen, color: "text-accent" },
   ];
 
-  if (isLoading) {
+  if (isLoading || authLoading || roleLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background">
         <Navbar />

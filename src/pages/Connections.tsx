@@ -24,19 +24,22 @@ interface Connection {
 }
 
 const Connections = () => {
-  const { user } = useAuth();
-  const { role } = useUserRole();
+  const { user, loading: authLoading } = useAuth();
+  const { role, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Wait for auth and role to load before checking
+    if (authLoading || roleLoading) return;
+    
     if (!user) {
       navigate("/auth");
       return;
     }
     fetchConnections();
-  }, [user, role]);
+  }, [user, role, authLoading, roleLoading]);
 
   const fetchConnections = async () => {
     if (!user || !role) return;
@@ -101,7 +104,7 @@ const Connections = () => {
     navigate(`/chat/${connectionId}`, { state: { otherUserName } });
   };
 
-  if (loading) {
+  if (loading || authLoading || roleLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
