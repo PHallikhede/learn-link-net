@@ -73,7 +73,7 @@ const Search = () => {
         "Atria Institute of Technology",
       ];
 
-      // Fetch all verified alumni
+      // Fetch verified alumni
       const { data: alumniData, error: alumniError } = await supabase
         .from("alumni_details")
         .select("*")
@@ -81,7 +81,17 @@ const Search = () => {
 
       if (alumniError) throw alumniError;
 
-      // Fetch profiles for each alumni and filter by Karnataka colleges
+      // Fetch all admin users
+      const { data: adminRoles, error: adminError } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin");
+
+      if (adminError) throw adminError;
+
+      const adminIds = adminRoles?.map(r => r.user_id) || [];
+
+      // Fetch profiles for alumni
       const alumniProfiles = await Promise.all(
         (alumniData || []).map(async (alumni) => {
           const { data: profile } = await supabase
@@ -119,8 +129,50 @@ const Search = () => {
         })
       );
 
-      // Filter out null values (non-Karnataka colleges)
-      setAlumni(alumniProfiles.filter((profile) => profile !== null) as AlumniProfile[]);
+      // Fetch profiles for admins
+      const adminProfiles = await Promise.all(
+        adminIds.map(async (adminId) => {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", adminId)
+            .single();
+
+          // Check connection status
+          const { data: connection } = await supabase
+            .from("connections")
+            .select("status")
+            .eq("student_id", user.id)
+            .eq("alumni_id", adminId)
+            .maybeSingle();
+
+          // Only include if from Karnataka college
+          if (!profile?.college || !karnatakaColleges.includes(profile.college)) {
+            return null;
+          }
+
+          return {
+            id: adminId,
+            full_name: profile?.full_name || "Unknown",
+            company: "IntelliConnect Platform",
+            job_title: "Platform Administrator",
+            college: profile?.college || "Not specified",
+            bio: profile?.bio || "Platform administrator and mentor",
+            skills: profile?.skills || [],
+            interests: profile?.interests || [],
+            graduation_year: 2020,
+            verification_status: "verified",
+            connection_status: connection?.status,
+          };
+        })
+      );
+
+      // Combine and filter out null values
+      const allProfiles = [...alumniProfiles, ...adminProfiles].filter(
+        (profile) => profile !== null
+      ) as AlumniProfile[];
+
+      setAlumni(allProfiles);
     } catch (error) {
       console.error("Error fetching alumni:", error);
       toast.error("Failed to load alumni");

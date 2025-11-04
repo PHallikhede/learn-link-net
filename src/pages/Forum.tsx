@@ -16,7 +16,7 @@ interface ForumPost {
   id: string;
   author_id: string;
   author: string;
-  authorRole: "student" | "alumni";
+  authorRole: "student" | "alumni" | "admin";
   title: string;
   content: string;
   created_at: string;
@@ -101,7 +101,7 @@ const Forum = () => {
         id: post.id,
         author_id: post.author_id,
         author: profilesMap.get(post.author_id) || "Unknown User",
-        authorRole: (rolesMap.get(post.author_id) || "student") as "student" | "alumni",
+        authorRole: (rolesMap.get(post.author_id) || "student") as "student" | "alumni" | "admin",
         title: post.title,
         content: post.content,
         created_at: post.created_at,
