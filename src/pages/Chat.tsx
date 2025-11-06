@@ -71,6 +71,36 @@ const Chat = () => {
     if (!connectionId) return;
 
     try {
+      // First verify the connection exists and is accepted
+      const { data: connection, error: connError } = await supabase
+        .from("connections")
+        .select("status, student_id, alumni_id")
+        .eq("id", connectionId)
+        .maybeSingle();
+
+      if (connError) throw connError;
+
+      if (!connection) {
+        toast.error("Connection not found");
+        navigate("/connections");
+        return;
+      }
+
+      // Check if user is part of this connection
+      if (connection.student_id !== user?.id && connection.alumni_id !== user?.id) {
+        toast.error("You don't have access to this conversation");
+        navigate("/connections");
+        return;
+      }
+
+      // Check if connection is accepted
+      if (connection.status !== "accepted") {
+        toast.error("This connection must be accepted before you can chat");
+        navigate("/connections");
+        return;
+      }
+
+      // Fetch messages only if all checks pass
       const { data, error } = await supabase
         .from("messages")
         .select("*")
@@ -82,6 +112,7 @@ const Chat = () => {
     } catch (error) {
       console.error("Error fetching messages:", error);
       toast.error("Failed to load messages");
+      navigate("/connections");
     } finally {
       setLoading(false);
     }

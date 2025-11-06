@@ -120,8 +120,8 @@ const Search = () => {
         })
       );
 
-      // Filter out null values (non-Karnataka colleges)
-      setAlumni(alumniProfiles.filter((profile) => profile !== null) as AlumniProfile[]);
+      // Filter out null values (non-Karnataka colleges) and exclude own ID
+      setAlumni(alumniProfiles.filter((profile) => profile !== null && profile.id !== user.id) as AlumniProfile[]);
 
       // Fetch all alumni who have joined (regardless of verification or college)
       const { data: allAlumniData, error: allAlumniError } = await supabase
@@ -169,7 +169,7 @@ const Search = () => {
         })
       );
 
-      setJoinedAlumni(allJoinedProfiles.filter((profile) => profile !== null) as AlumniProfile[]);
+      setJoinedAlumni(allJoinedProfiles.filter((profile) => profile !== null && profile.id !== user.id) as AlumniProfile[]);
     } catch (error) {
       console.error("Error fetching alumni:", error);
       toast.error("Failed to load alumni");
@@ -180,6 +180,12 @@ const Search = () => {
 
   const handleConnect = async (alumniId: string, alumniName: string) => {
     if (!user) return;
+
+    // Prevent self-connection
+    if (alumniId === user.id) {
+      toast.error("You cannot send a connection request to yourself");
+      return;
+    }
 
     setConnectingIds(new Set(connectingIds).add(alumniId));
 
