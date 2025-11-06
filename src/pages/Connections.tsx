@@ -29,6 +29,7 @@ const Connections = () => {
   const navigate = useNavigate();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newRequestCount, setNewRequestCount] = useState(0);
 
   useEffect(() => {
     // Wait for auth and role to load before checking
@@ -39,6 +40,122 @@ const Connections = () => {
       return;
     }
     fetchConnections();
+
+    // Set up real-time subscription for connection requests
+    if (role === "alumni") {
+      const channel = supabase
+        .channel("connection_requests")
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "connections",
+            filter: `alumni_id=eq.${user.id}`,
+          },
+          async (payload) => {
+            // Fetch student profile details
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("full_name")
+              .eq("id", payload.new.student_id)
+              .single();
+
+            toast.success(
+              `New connection request from ${profile?.full_name || "a student"}!`,
+              { duration: 5000 }
+            );
+            setNewRequestCount((prev) => prev + 1);
+            fetchConnections();
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "connections",
+            filter: `student_id=eq.${user.id}`,
+          },
+          async (payload) => {
+            if (payload.new.status === "accepted") {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("full_name")
+                .eq("id", payload.new.alumni_id)
+                .single();
+
+              toast.success(
+                `${profile?.full_name || "Alumni"} accepted your connection request!`,
+                { duration: 5000 }
+              );
+            } else if (payload.new.status === "rejected") {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("full_name")
+                .eq("id", payload.new.alumni_id)
+                .single();
+
+              toast.error(
+                `${profile?.full_name || "Alumni"} declined your connection request`,
+                { duration: 5000 }
+              );
+            }
+            fetchConnections();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+
+    // For students, listen for status updates
+    if (role === "student") {
+      const channel = supabase
+        .channel("connection_updates")
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "connections",
+            filter: `student_id=eq.${user.id}`,
+          },
+          async (payload) => {
+            if (payload.new.status === "accepted") {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("full_name")
+                .eq("id", payload.new.alumni_id)
+                .single();
+
+              toast.success(
+                `${profile?.full_name || "Alumni"} accepted your connection request!`,
+                { duration: 5000 }
+              );
+            } else if (payload.new.status === "rejected") {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("full_name")
+                .eq("id", payload.new.alumni_id)
+                .single();
+
+              toast.error(
+                `${profile?.full_name || "Alumni"} declined your connection request`,
+                { duration: 5000 }
+              );
+            }
+            fetchConnections();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [user, role, authLoading, roleLoading]);
 
   const fetchConnections = async () => {
@@ -93,6 +210,7 @@ const Connections = () => {
       if (error) throw error;
 
       toast.success(`Connection ${newStatus}`);
+      setNewRequestCount(0);
       fetchConnections();
     } catch (error) {
       console.error("Error updating connection:", error);
@@ -150,9 +268,16 @@ const Connections = () => {
             {/* Pending Requests Section */}
             {connections.filter((c) => c.status === "pending").length > 0 && (
               <div className="mb-8">
-                <h2 className="text-2xl font-bold mb-4">
-                  {role === "alumni" ? "Pending Requests" : "Sent Requests"}
-                </h2>
+                <div className="flex items-center gap-3 mb-4">
+                  <h2 className="text-2xl font-bold">
+                    {role === "alumni" ? "Pending Requests" : "Sent Requests"}
+                  </h2>
+                  {role === "alumni" && newRequestCount > 0 && (
+                    <Badge variant="destructive" className="animate-pulse">
+                      {newRequestCount} New
+                    </Badge>
+                  )}
+                </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   {connections
                     .filter((c) => c.status === "pending")
