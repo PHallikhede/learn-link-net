@@ -21,7 +21,7 @@ const Chat = () => {
   const { connectionId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -31,8 +31,15 @@ const Chat = () => {
 
   useEffect(() => {
     console.log("Chat component mounted");
+    console.log("Auth loading:", authLoading);
     console.log("User:", user);
     console.log("Connection ID:", connectionId);
+    
+    // Wait for auth to load
+    if (authLoading) {
+      console.log("Waiting for auth to load...");
+      return;
+    }
     
     if (!user || !connectionId) {
       console.log("Missing user or connectionId, redirecting...");
@@ -71,7 +78,7 @@ const Chat = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, connectionId]);
+  }, [user, connectionId, authLoading, navigate]);
 
   useEffect(() => {
     scrollToBottom();
@@ -207,7 +214,7 @@ const Chat = () => {
     }
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
