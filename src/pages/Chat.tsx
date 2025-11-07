@@ -30,7 +30,12 @@ const Chat = () => {
   const otherUserName = location.state?.otherUserName || "User";
 
   useEffect(() => {
+    console.log("Chat component mounted");
+    console.log("User:", user);
+    console.log("Connection ID:", connectionId);
+    
     if (!user || !connectionId) {
+      console.log("Missing user or connectionId, redirecting...");
       navigate("/connections");
       return;
     }
@@ -77,7 +82,22 @@ const Chat = () => {
   };
 
   const fetchMessages = async () => {
-    if (!connectionId) return;
+    if (!connectionId) {
+      console.error("No connection ID provided");
+      toast.error("Invalid connection");
+      navigate("/connections");
+      setLoading(false);
+      return;
+    }
+
+    if (!user) {
+      console.error("No user found");
+      setLoading(false);
+      return;
+    }
+
+    console.log("Fetching messages for connection:", connectionId);
+    console.log("Current user:", user.id);
 
     try {
       // First verify the connection exists and is accepted
@@ -87,9 +107,13 @@ const Chat = () => {
         .eq("id", connectionId)
         .maybeSingle();
 
+      console.log("Connection data:", connection);
+      console.log("Connection error:", connError);
+
       if (connError) throw connError;
 
       if (!connection) {
+        console.error("Connection not found");
         toast.error("Connection not found");
         navigate("/connections");
         return;
@@ -97,6 +121,7 @@ const Chat = () => {
 
       // Check if user is part of this connection
       if (connection.student_id !== user?.id && connection.alumni_id !== user?.id) {
+        console.error("User not part of connection");
         toast.error("You don't have access to this conversation");
         navigate("/connections");
         return;
@@ -104,10 +129,13 @@ const Chat = () => {
 
       // Check if connection is accepted
       if (connection.status !== "accepted") {
+        console.error("Connection not accepted, status:", connection.status);
         toast.error("This connection must be accepted before you can chat");
         navigate("/connections");
         return;
       }
+
+      console.log("Connection verified, fetching messages...");
 
       // Fetch messages only if all checks pass
       const { data, error } = await supabase
@@ -116,8 +144,12 @@ const Chat = () => {
         .eq("connection_id", connectionId)
         .order("created_at", { ascending: true });
 
+      console.log("Messages data:", data);
+      console.log("Messages error:", error);
+
       if (error) throw error;
       setMessages(data || []);
+      console.log("Messages loaded successfully");
     } catch (error) {
       console.error("Error fetching messages:", error);
       toast.error("Failed to load messages");
