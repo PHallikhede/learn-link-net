@@ -49,7 +49,16 @@ const Chat = () => {
           filter: `connection_id=eq.${connectionId}`,
         },
         (payload) => {
-          setMessages((current) => [...current, payload.new as Message]);
+          const newMessage = payload.new as Message;
+          // Prevent duplicates (especially for sender's own messages)
+          setMessages((current) => {
+            const exists = current.some(msg => msg.id === newMessage.id);
+            if (exists) return current;
+            // Also check if this is replacing a temp message
+            const hasTempVersion = current.some(msg => msg.id.startsWith('temp-') && msg.sender_id === newMessage.sender_id);
+            if (hasTempVersion) return current;
+            return [...current, newMessage];
+          });
         }
       )
       .subscribe();
@@ -122,19 +131,45 @@ const Chat = () => {
     e.preventDefault();
     if (!newMessage.trim() || !user || !connectionId || sending) return;
 
+    const messageContent = newMessage.trim();
+    const tempId = `temp-${Date.now()}`;
+    
+    // Optimistically add message to UI
+    const optimisticMessage: Message = {
+      id: tempId,
+      content: messageContent,
+      sender_id: user.id,
+      created_at: new Date().toISOString(),
+      read: false,
+    };
+    
+    setMessages((current) => [...current, optimisticMessage]);
+    setNewMessage("");
     setSending(true);
+
     try {
-      const { error } = await supabase.from("messages").insert({
-        connection_id: connectionId,
-        sender_id: user.id,
-        content: newMessage.trim(),
-      });
+      const { data, error } = await supabase
+        .from("messages")
+        .insert({
+          connection_id: connectionId,
+          sender_id: user.id,
+          content: messageContent,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
-      setNewMessage("");
+
+      // Replace optimistic message with real one
+      setMessages((current) =>
+        current.map((msg) => (msg.id === tempId ? data : msg))
+      );
     } catch (error) {
       console.error("Error sending message:", error);
       toast.error("Failed to send message");
+      // Remove optimistic message on error
+      setMessages((current) => current.filter((msg) => msg.id !== tempId));
+      setNewMessage(messageContent);
     } finally {
       setSending(false);
     }
