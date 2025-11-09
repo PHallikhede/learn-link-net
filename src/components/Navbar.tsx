@@ -54,6 +54,10 @@ const Navbar = () => {
                   <Users className="w-4 h-4" />
                   Connections
                 </Link>
+                <Link to="/messages" className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
+                  <MessageCircle className="w-4 h-4" />
+                  Messages
+                </Link>
                 <Link to="/forum" className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
                   <MessageCircle className="w-4 h-4" />
                   Forum
@@ -116,6 +120,10 @@ const Navbar = () => {
                 <Link to="/connections" className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
                   <Users className="w-4 h-4" />
                   Connections
+                </Link>
+                <Link to="/messages" className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
+                  <MessageCircle className="w-4 h-4" />
+                  Messages
                 </Link>
                 <Link to="/forum" className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
                   <MessageCircle className="w-4 h-4" />
