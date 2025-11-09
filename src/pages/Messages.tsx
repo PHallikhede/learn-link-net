@@ -44,6 +44,56 @@ const Messages = () => {
 
     if (user) {
       fetchConnections();
+
+      // Set up real-time subscription for new messages
+      const messagesChannel = supabase
+        .channel('messages-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'messages'
+          },
+          () => {
+            fetchConnections();
+          }
+        )
+        .subscribe();
+
+      // Set up real-time subscription for connection changes
+      const connectionsChannel = supabase
+        .channel('connections-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'connections',
+            filter: `student_id=eq.${user.id}`
+          },
+          () => {
+            fetchConnections();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'connections',
+            filter: `alumni_id=eq.${user.id}`
+          },
+          () => {
+            fetchConnections();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(messagesChannel);
+        supabase.removeChannel(connectionsChannel);
+      };
     }
   }, [user, authLoading, navigate]);
 
@@ -143,7 +193,17 @@ const Messages = () => {
 
         {connections.length === 0 ? (
           <Card className="p-8 text-center">
-            <p className="text-muted-foreground">No conversations yet. Connect with alumni to start messaging.</p>
+            <p className="text-muted-foreground mb-4">No conversations yet.</p>
+            <p className="text-sm text-muted-foreground">
+              Connect with alumni from the{" "}
+              <button 
+                onClick={() => navigate("/connections")} 
+                className="text-primary hover:underline font-medium"
+              >
+                Connections page
+              </button>
+              {" "}to start messaging.
+            </p>
           </Card>
         ) : (
           <div className="space-y-2">
