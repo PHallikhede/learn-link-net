@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search as SearchIcon, User, Building2, Briefcase, Loader2, UserPlus } from "lucide-react";
+import { Search as SearchIcon, User, Building2, Briefcase, Loader2, UserPlus, Sparkles, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -33,9 +33,12 @@ const Search = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [skillFilter, setSkillFilter] = useState("all");
   const [alumni, setAlumni] = useState<AlumniProfile[]>([]);
+  const [aiRecommendations, setAiRecommendations] = useState<AlumniProfile[]>([]);
   const [joinedAlumni, setJoinedAlumni] = useState<AlumniProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
   const [connectingIds, setConnectingIds] = useState<Set<string>>(new Set());
+  const [useAiSearch, setUseAiSearch] = useState(false);
 
   useEffect(() => {
     // Wait for auth and role to load before checking
@@ -48,6 +51,57 @@ const Search = () => {
     
     fetchAlumni();
   }, [user, role, authLoading, roleLoading]);
+
+  const performAiSearch = async () => {
+    if (!user) return;
+    
+    setSearching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-search-alumni', {
+        body: { searchQuery, skillFilter }
+      });
+
+      if (error) throw error;
+
+      if (data?.results) {
+        // Fetch connection status for each result
+        const resultsWithStatus = await Promise.all(
+          data.results.map(async (alumni: any) => {
+            const { data: connection } = await supabase
+              .from("connections")
+              .select("status")
+              .eq("student_id", user.id)
+              .eq("alumni_id", alumni.id)
+              .maybeSingle();
+
+            return {
+              id: alumni.id,
+              full_name: alumni.full_name || "Unknown",
+              company: alumni.alumni_details?.[0]?.company || "Not specified",
+              job_title: alumni.alumni_details?.[0]?.job_title || "Alumni",
+              college: alumni.college || "Not specified",
+              bio: alumni.bio || "",
+              skills: alumni.skills || [],
+              interests: alumni.interests || [],
+              graduation_year: alumni.alumni_details?.[0]?.graduation_year || 2020,
+              verification_status: alumni.alumni_details?.[0]?.verification_status || "pending",
+              connection_status: connection?.status,
+            };
+          })
+        );
+        
+        setAiRecommendations(resultsWithStatus);
+        setUseAiSearch(true);
+        toast.success("AI-powered search complete!");
+      }
+    } catch (error) {
+      console.error("Error in AI search:", error);
+      toast.error("AI search failed, showing standard results");
+      setUseAiSearch(false);
+    } finally {
+      setSearching(false);
+    }
+  };
 
   const fetchAlumni = async () => {
     if (!user) return;
@@ -218,7 +272,9 @@ const Search = () => {
     }
   };
 
-  const filteredAlumni = alumni.filter((person) => {
+  const filteredAlumni = (useAiSearch ? aiRecommendations : alumni).filter((person) => {
+    if (useAiSearch) return true; // AI already filtered
+    
     const matchesSearch =
       searchQuery === "" ||
       person.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -306,30 +362,78 @@ const Search = () => {
         {/* Search and Filters */}
         <Card className="mb-8 shadow-card">
           <CardContent className="pt-6">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="relative">
-                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name, company, or skill..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
+            <div className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="relative">
+                  <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name, company, or skill..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setUseAiSearch(false);
+                    }}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={skillFilter} onValueChange={(val) => {
+                  setSkillFilter(val);
+                  setUseAiSearch(false);
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by Skill" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Skills</SelectItem>
+                    <SelectItem value="machine learning">Machine Learning</SelectItem>
+                    <SelectItem value="web">Web Development</SelectItem>
+                    <SelectItem value="mobile">Mobile Development</SelectItem>
+                    <SelectItem value="data">Data Science</SelectItem>
+                    <SelectItem value="react">React</SelectItem>
+                    <SelectItem value="python">Python</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <Select value={skillFilter} onValueChange={setSkillFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by Skill" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Skills</SelectItem>
-                  <SelectItem value="machine learning">Machine Learning</SelectItem>
-                  <SelectItem value="web">Web Development</SelectItem>
-                  <SelectItem value="mobile">Mobile Development</SelectItem>
-                  <SelectItem value="data">Data Science</SelectItem>
-                  <SelectItem value="react">React</SelectItem>
-                  <SelectItem value="python">Python</SelectItem>
-                </SelectContent>
-              </Select>
+              
+              <div className="flex gap-3">
+                <Button 
+                  onClick={performAiSearch}
+                  disabled={searching}
+                  variant="default"
+                  className="flex-1"
+                >
+                  {searching ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      AI Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      AI-Powered Search
+                    </>
+                  )}
+                </Button>
+                
+                {useAiSearch && (
+                  <Button 
+                    onClick={() => {
+                      setUseAiSearch(false);
+                      setAiRecommendations([]);
+                    }}
+                    variant="outline"
+                  >
+                    Show All Results
+                  </Button>
+                )}
+              </div>
+
+              {useAiSearch && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground bg-accent/50 p-3 rounded-lg">
+                  <TrendingUp className="w-4 h-4" />
+                  <span>Results ranked by AI based on your profile and search criteria</span>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

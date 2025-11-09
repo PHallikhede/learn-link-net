@@ -59,34 +59,58 @@ const Dashboard = () => {
           .select("*", { count: "exact", head: true })
           .eq("author_id", user.id);
 
-        // Fetch alumni recommendations
-        const { data: alumniData } = await supabase
-          .from("profiles")
-          .select("*")
-          .limit(10);
-
-        // Get alumni details for each profile
-        const alumniRecommendations = [];
-        if (alumniData) {
-          for (const profile of alumniData) {
-            const { data: alumniDetail } = await supabase
-              .from("alumni_details")
-              .select("*")
-              .eq("user_id", profile.id)
-              .eq("verification_status", "verified")
-              .maybeSingle();
+        // Fetch AI-powered alumni recommendations
+        let alumniRecommendations = [];
+        
+        if (role === "student") {
+          try {
+            const { data: aiData, error: aiError } = await supabase.functions.invoke('get-mentor-recommendations');
             
-            if (alumniDetail && profile.id !== user.id) {
-              alumniRecommendations.push({
-                id: profile.id,
-                name: profile.full_name || "Unknown",
-                role: `${alumniDetail.job_title || "Professional"} at ${alumniDetail.company || "Company"}`,
-                college: profile.college || "",
-                skills: profile.skills || [],
-                matchScore: Math.floor(Math.random() * 20) + 80,
-              });
+            if (aiError) {
+              console.error("AI recommendations error:", aiError);
+            } else if (aiData?.recommendations) {
+              alumniRecommendations = aiData.recommendations.slice(0, 3).map((alumni: any) => ({
+                id: alumni.id,
+                name: alumni.full_name || "Unknown",
+                role: `${alumni.alumni_details?.[0]?.position || "Professional"} at ${alumni.alumni_details?.[0]?.company || "Company"}`,
+                college: alumni.college || "",
+                skills: alumni.skills || [],
+                matchScore: 95, // AI-powered match
+              }));
             }
-            if (alumniRecommendations.length >= 3) break;
+          } catch (error) {
+            console.error("Error fetching AI recommendations:", error);
+          }
+        }
+        
+        // Fallback to basic recommendations if AI fails
+        if (alumniRecommendations.length === 0) {
+          const { data: alumniData } = await supabase
+            .from("profiles")
+            .select("*")
+            .limit(10);
+
+          if (alumniData) {
+            for (const profile of alumniData) {
+              const { data: alumniDetail } = await supabase
+                .from("alumni_details")
+                .select("*")
+                .eq("user_id", profile.id)
+                .eq("verification_status", "verified")
+                .maybeSingle();
+              
+              if (alumniDetail && profile.id !== user.id) {
+                alumniRecommendations.push({
+                  id: profile.id,
+                  name: profile.full_name || "Unknown",
+                  role: `${alumniDetail.job_title || "Professional"} at ${alumniDetail.company || "Company"}`,
+                  college: profile.college || "",
+                  skills: profile.skills || [],
+                  matchScore: Math.floor(Math.random() * 20) + 80,
+                });
+              }
+              if (alumniRecommendations.length >= 3) break;
+            }
           }
         }
 
