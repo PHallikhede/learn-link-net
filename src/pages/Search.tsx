@@ -107,43 +107,23 @@ const Search = () => {
     if (!user) return;
 
     try {
-      // Karnataka colleges list for filtering
-      const karnatakaColleges = [
-        "Bangalore Institute of Technology (BIT)",
-        "BMS College of Engineering (BMSCE)",
-        "RV College of Engineering (RVCE)",
-        "PES University",
-        "MS Ramaiah Institute of Technology (MSRIT)",
-        "Dayananda Sagar College of Engineering (DSCE)",
-        "BNM Institute of Technology (BNMIT)",
-        "Sir M Visvesvaraya Institute of Technology (MVIT)",
-        "National Institute of Technology Karnataka (NITK Surathkal)",
-        "JSS Science and Technology University",
-        "Manipal Institute of Technology (MIT Manipal)",
-        "KLE Technological University",
-        "SDM College of Engineering and Technology",
-        "Siddaganga Institute of Technology (SIT)",
-        "CMR Institute of Technology (CMRIT)",
-        "New Horizon College of Engineering",
-        "Atria Institute of Technology",
-      ];
-
-      // Fetch verified alumni who have the alumni role
+      // Fetch all alumni
       const { data: alumniData, error: alumniError } = await supabase
         .from("alumni_details")
-        .select("*")
-        .eq("verification_status", "verified");
+        .select("*");
 
       if (alumniError) throw alumniError;
 
-      // Fetch profiles for alumni
+      // Fetch profiles for all alumni
       const alumniProfiles = await Promise.all(
         (alumniData || []).map(async (alumni) => {
           const { data: profile } = await supabase
             .from("profiles")
             .select("*")
             .eq("id", alumni.user_id)
-            .single();
+            .maybeSingle();
+
+          if (!profile) return null;
 
           // Check connection status
           const { data: connection } = await supabase
@@ -153,20 +133,15 @@ const Search = () => {
             .eq("alumni_id", alumni.user_id)
             .maybeSingle();
 
-          // Only include if from Karnataka college
-          if (!profile?.college || !karnatakaColleges.includes(profile.college)) {
-            return null;
-          }
-
           return {
             id: alumni.user_id,
-            full_name: profile?.full_name || "Unknown",
+            full_name: profile.full_name || "Unknown",
             company: alumni.company || "Not specified",
             job_title: alumni.job_title || "Alumni",
-            college: profile?.college || "Not specified",
-            bio: profile?.bio || "",
-            skills: profile?.skills || [],
-            interests: profile?.interests || [],
+            college: profile.college || "Not specified",
+            bio: profile.bio || "",
+            skills: profile.skills || [],
+            interests: profile.interests || [],
             graduation_year: alumni.graduation_year || 2020,
             verification_status: alumni.verification_status,
             connection_status: connection?.status,
@@ -174,56 +149,10 @@ const Search = () => {
         })
       );
 
-      // Filter out null values (non-Karnataka colleges) and exclude own ID
-      setAlumni(alumniProfiles.filter((profile) => profile !== null && profile.id !== user.id) as AlumniProfile[]);
-
-      // Fetch all alumni who have joined (regardless of verification or college)
-      const { data: allAlumniData, error: allAlumniError } = await supabase
-        .from("alumni_details")
-        .select("*");
-
-      if (allAlumniError) throw allAlumniError;
-
-      // Fetch profiles for all joined alumni
-      const allJoinedProfiles = await Promise.all(
-        (allAlumniData || []).map(async (alumni) => {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", alumni.user_id)
-            .single();
-
-          // Check connection status
-          const { data: connection } = await supabase
-            .from("connections")
-            .select("status")
-            .eq("student_id", user.id)
-            .eq("alumni_id", alumni.user_id)
-            .maybeSingle();
-
-          // Skip if already in the verified Karnataka list
-          const isInMainList = alumniProfiles.some(p => p?.id === alumni.user_id);
-          if (isInMainList) {
-            return null;
-          }
-
-          return {
-            id: alumni.user_id,
-            full_name: profile?.full_name || "Unknown",
-            company: alumni.company || "Not specified",
-            job_title: alumni.job_title || "Alumni",
-            college: profile?.college || "Not specified",
-            bio: profile?.bio || "",
-            skills: profile?.skills || [],
-            interests: profile?.interests || [],
-            graduation_year: alumni.graduation_year || 2020,
-            verification_status: alumni.verification_status,
-            connection_status: connection?.status,
-          };
-        })
-      );
-
-      setJoinedAlumni(allJoinedProfiles.filter((profile) => profile !== null && profile.id !== user.id) as AlumniProfile[]);
+      // Filter out null values and exclude own ID
+      const validProfiles = alumniProfiles.filter((profile) => profile !== null && profile.id !== user.id) as AlumniProfile[];
+      setAlumni(validProfiles);
+      setJoinedAlumni([]);
     } catch (error) {
       console.error("Error fetching alumni:", error);
       toast.error("Failed to load alumni");
@@ -280,8 +209,13 @@ const Search = () => {
       person.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       person.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
       person.job_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      person.college.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      person.bio.toLowerCase().includes(searchQuery.toLowerCase()) ||
       person.skills.some((skill) =>
         skill.toLowerCase().includes(searchQuery.toLowerCase())
+      ) ||
+      person.interests.some((interest) =>
+        interest.toLowerCase().includes(searchQuery.toLowerCase())
       );
 
     const matchesSkill =
@@ -467,7 +401,7 @@ const Search = () => {
                         </p>
                       </div>
 
-                      <div className="space-y-2 mb-4">
+                       <div className="space-y-2 mb-4">
                         <div className="flex items-center gap-2 text-sm">
                           <Building2 className="w-4 h-4 text-muted-foreground" />
                           <span>{person.company}</span>
@@ -478,6 +412,11 @@ const Search = () => {
                             {person.college} • Class of {person.graduation_year}
                           </span>
                         </div>
+                        {person.verification_status !== "verified" && (
+                          <Badge variant="outline" className="text-xs">
+                            {person.verification_status}
+                          </Badge>
+                        )}
                       </div>
 
                       {person.bio && (
@@ -510,77 +449,6 @@ const Search = () => {
           </div>
         )}
 
-        {/* All Joined Alumni Section */}
-        {joinedAlumni.length > 0 && (
-          <div className="mt-12">
-            <h2 className="text-2xl font-bold mb-6">Other Alumni Who Have Joined</h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              {joinedAlumni.map((person) => (
-                <Card
-                  key={person.id}
-                  className="shadow-card hover:shadow-elevated transition-all"
-                >
-                  <CardContent className="pt-6">
-                    <div className="flex gap-4">
-                      <div className="w-16 h-16 rounded-full bg-gradient-accent flex items-center justify-center flex-shrink-0">
-                        <User className="w-8 h-8 text-secondary-foreground" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="mb-3">
-                          <h3 className="font-bold text-lg">{person.full_name}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {person.job_title}
-                          </p>
-                          {person.verification_status !== "verified" && (
-                            <Badge variant="outline" className="text-xs mt-1">
-                              {person.verification_status}
-                            </Badge>
-                          )}
-                        </div>
-
-                        <div className="space-y-2 mb-4">
-                          <div className="flex items-center gap-2 text-sm">
-                            <Building2 className="w-4 h-4 text-muted-foreground" />
-                            <span>{person.company}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm">
-                            <Briefcase className="w-4 h-4 text-muted-foreground" />
-                            <span>
-                              {person.college} • Class of {person.graduation_year}
-                            </span>
-                          </div>
-                        </div>
-
-                        {person.bio && (
-                          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                            {person.bio}
-                          </p>
-                        )}
-
-                        {person.skills.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-4">
-                            {person.skills.slice(0, 4).map((skill, index) => (
-                              <Badge key={index} variant="outline" className="text-xs">
-                                {skill}
-                              </Badge>
-                            ))}
-                            {person.skills.length > 4 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{person.skills.length - 4} more
-                              </Badge>
-                            )}
-                          </div>
-                        )}
-
-                        {getConnectionButton(person)}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
