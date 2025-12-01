@@ -107,49 +107,72 @@ const Search = () => {
     if (!user) return;
 
     try {
-      // Fetch all alumni
-      const { data: alumniData, error: alumniError } = await supabase
+      // Fetch all profiles (all members)
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("profiles")
+        .select("*");
+
+      if (profilesError) throw profilesError;
+
+      // Fetch roles for all users
+      const { data: rolesData, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id, role");
+
+      if (rolesError) throw rolesError;
+
+      // Fetch alumni details for additional info
+      const { data: alumniDetailsData, error: alumniDetailsError } = await supabase
         .from("alumni_details")
         .select("*");
 
-      if (alumniError) throw alumniError;
+      if (alumniDetailsError) throw alumniDetailsError;
 
-      // Fetch profiles for all alumni
-      const alumniProfiles = await Promise.all(
-        (alumniData || []).map(async (alumni) => {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", alumni.user_id)
-            .maybeSingle();
+      // Fetch existing connections from current user
+      const { data: connectionsData, error: connectionsError } = await supabase
+        .from("connections")
+        .select("alumni_id, status")
+        .eq("student_id", user.id);
 
-          // Check connection status
-          const { data: connection } = await supabase
-            .from("connections")
-            .select("status")
-            .eq("student_id", user.id)
-            .eq("alumni_id", alumni.user_id)
-            .maybeSingle();
+      if (connectionsError) throw connectionsError;
+
+      const roleMap = new Map<string, string>();
+      (rolesData || []).forEach((r: any) => {
+        roleMap.set(r.user_id, r.role);
+      });
+
+      const alumniDetailsMap = new Map<string, any>();
+      (alumniDetailsData || []).forEach((a: any) => {
+        alumniDetailsMap.set(a.user_id, a);
+      });
+
+      const connectionStatusMap = new Map<string, string | null>();
+      (connectionsData || []).forEach((c: any) => {
+        connectionStatusMap.set(c.alumni_id, c.status);
+      });
+
+      const members: AlumniProfile[] = (profilesData || [])
+        .filter((profile: any) => profile.id !== user.id)
+        .map((profile: any) => {
+          const role = roleMap.get(profile.id);
+          const alumniDetails = alumniDetailsMap.get(profile.id);
 
           return {
-            id: alumni.user_id,
-            full_name: profile?.full_name || "Unknown",
-            company: alumni.company || "Not specified",
-            job_title: alumni.job_title || "Alumni",
-            college: profile?.college || "Not specified",
-            bio: profile?.bio || "",
-            skills: profile?.skills || [],
-            interests: profile?.interests || [],
-            graduation_year: alumni.graduation_year || 2020,
-            verification_status: alumni.verification_status || "pending",
-            connection_status: connection?.status,
+            id: profile.id,
+            full_name: profile.full_name || "Unknown",
+            company: alumniDetails?.company || "Not specified",
+            job_title: alumniDetails?.job_title || (role === "student" ? "Student" : "Member"),
+            college: profile.college || "Not specified",
+            bio: profile.bio || "",
+            skills: profile.skills || [],
+            interests: profile.interests || [],
+            graduation_year: alumniDetails?.graduation_year || 0,
+            verification_status: alumniDetails?.verification_status || "pending",
+            connection_status: connectionStatusMap.get(profile.id) || undefined,
           };
-        })
-      );
+        });
 
-      // Exclude own ID from results
-      const validProfiles = alumniProfiles.filter((profile) => profile.id !== user.id) as AlumniProfile[];
-      setAlumni(validProfiles);
+      setAlumni(members);
       setJoinedAlumni([]);
     } catch (error) {
       console.error("Error fetching alumni:", error);
