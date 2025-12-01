@@ -154,23 +154,29 @@ const Profile = () => {
       if (role === "student") {
         const { error: studentError } = await supabase
           .from("student_details")
-          .upsert({
-            user_id: user.id,
-            year: profile.year ? parseInt(profile.year) : null,
-            branch: profile.branch,
-            goals: profile.goals,
-          });
+          .upsert(
+            {
+              user_id: user.id,
+              year: profile.year ? parseInt(profile.year) : null,
+              branch: profile.branch,
+              goals: profile.goals,
+            },
+            { onConflict: "user_id" }
+          );
 
         if (studentError) throw studentError;
       } else if (role === "alumni") {
         const { error: alumniError } = await supabase
           .from("alumni_details")
-          .upsert({
-            user_id: user.id,
-            job_title: profile.job_title,
-            company: profile.company,
-            graduation_year: profile.graduation_year ? parseInt(profile.graduation_year) : null,
-          });
+          .upsert(
+            {
+              user_id: user.id,
+              job_title: profile.job_title,
+              company: profile.company,
+              graduation_year: profile.graduation_year ? parseInt(profile.graduation_year) : null,
+            },
+            { onConflict: "user_id" }
+          );
 
         if (alumniError) throw alumniError;
       }
