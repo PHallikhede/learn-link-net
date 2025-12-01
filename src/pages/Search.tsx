@@ -123,8 +123,6 @@ const Search = () => {
             .eq("id", alumni.user_id)
             .maybeSingle();
 
-          if (!profile) return null;
-
           // Check connection status
           const { data: connection } = await supabase
             .from("connections")
@@ -135,22 +133,22 @@ const Search = () => {
 
           return {
             id: alumni.user_id,
-            full_name: profile.full_name || "Unknown",
+            full_name: profile?.full_name || "Unknown",
             company: alumni.company || "Not specified",
             job_title: alumni.job_title || "Alumni",
-            college: profile.college || "Not specified",
-            bio: profile.bio || "",
-            skills: profile.skills || [],
-            interests: profile.interests || [],
+            college: profile?.college || "Not specified",
+            bio: profile?.bio || "",
+            skills: profile?.skills || [],
+            interests: profile?.interests || [],
             graduation_year: alumni.graduation_year || 2020,
-            verification_status: alumni.verification_status,
+            verification_status: alumni.verification_status || "pending",
             connection_status: connection?.status,
           };
         })
       );
 
-      // Filter out null values and exclude own ID
-      const validProfiles = alumniProfiles.filter((profile) => profile !== null && profile.id !== user.id) as AlumniProfile[];
+      // Exclude own ID from results
+      const validProfiles = alumniProfiles.filter((profile) => profile.id !== user.id) as AlumniProfile[];
       setAlumni(validProfiles);
       setJoinedAlumni([]);
     } catch (error) {
