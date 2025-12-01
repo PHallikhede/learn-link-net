@@ -45,7 +45,7 @@ serve(async (req) => {
       throw new Error("Profile not found");
     }
 
-    // Get all verified alumni
+    // Get all alumni (not just verified)
     const { data: alumniData } = await supabase
       .from("profiles")
       .select(`
@@ -53,8 +53,7 @@ serve(async (req) => {
         alumni_details!inner(*),
         user_roles!inner(role)
       `)
-      .eq("user_roles.role", "alumni")
-      .eq("alumni_details.verification_status", "verified");
+      .eq("user_roles.role", "alumni");
 
     if (!alumniData || alumniData.length === 0) {
       return new Response(
