@@ -14,6 +14,8 @@ serve(async (req) => {
   try {
     const { email, newPassword } = await req.json();
 
+    console.log("Reset password request for email:", email);
+
     if (!email || !newPassword) {
       return new Response(
         JSON.stringify({ error: "Email and new password are required" }),
@@ -44,14 +46,20 @@ serve(async (req) => {
       );
     }
 
-    const user = users.users.find(u => u.email === email);
+    console.log("Total users found:", users.users.length);
+
+    // Case-insensitive email search
+    const user = users.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
 
     if (!user) {
+      console.error("User not found for email:", email);
       return new Response(
         JSON.stringify({ error: "User not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log("User found, updating password for user ID:", user.id);
 
     // Update password without verification
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
