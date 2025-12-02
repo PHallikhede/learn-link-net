@@ -36,6 +36,7 @@ const Auth = () => {
   const navigate = useNavigate();
   const { user, signIn, signUp } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
   
   // Login state
   const [loginEmail, setLoginEmail] = useState("");
@@ -49,6 +50,10 @@ const Auth = () => {
   const [college, setCollege] = useState("");
   const [company, setCompany] = useState("");
   const [branch, setBranch] = useState("");
+  
+  // Reset password state
+  const [resetEmail, setResetEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
 
   // Redirect if already logged in
   useEffect(() => {
@@ -115,6 +120,42 @@ const Auth = () => {
     }
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reset-password`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email: resetEmail, newPassword }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(data.error || "Failed to reset password");
+        setIsLoading(false);
+        return;
+      }
+
+      toast.success("Password reset successfully! You can now login.");
+      setShowResetPassword(false);
+      setResetEmail("");
+      setNewPassword("");
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Reset password error:", error);
+      toast.error("Failed to reset password");
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-hero p-4">
       <div className="w-full max-w-md animate-scale-in">
@@ -128,11 +169,55 @@ const Auth = () => {
 
         <Card className="shadow-elevated">
           <CardHeader>
-            <CardTitle>Welcome</CardTitle>
-            <CardDescription>Sign in to your account or create a new one</CardDescription>
+            <CardTitle>{showResetPassword ? "Reset Password" : "Welcome"}</CardTitle>
+            <CardDescription>
+              {showResetPassword 
+                ? "Enter your email and new password" 
+                : "Sign in to your account or create a new one"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="login" className="w-full">
+            {showResetPassword ? (
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reset-email">Email</Label>
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="flex-1" 
+                    onClick={() => setShowResetPassword(false)}
+                    disabled={isLoading}
+                  >
+                    Back
+                  </Button>
+                  <Button type="submit" className="flex-1" disabled={isLoading}>
+                    {isLoading ? "Resetting..." : "Reset Password"}
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <Tabs defaultValue="login" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -164,6 +249,14 @@ const Auth = () => {
                   </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "Signing in..." : "Sign In"}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="link" 
+                    className="w-full text-sm" 
+                    onClick={() => setShowResetPassword(true)}
+                  >
+                    Forgot Password?
                   </Button>
                 </form>
               </TabsContent>
@@ -261,6 +354,7 @@ const Auth = () => {
                 </form>
               </TabsContent>
             </Tabs>
+            )}
           </CardContent>
         </Card>
       </div>
