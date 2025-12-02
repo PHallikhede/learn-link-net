@@ -18,8 +18,8 @@ interface Message {
 
 interface Connection {
   id: string;
-  student_id: string;
-  alumni_id: string;
+  requester_id: string;
+  receiver_id: string;
   status: string;
   created_at: string;
   other_user: {
@@ -111,7 +111,7 @@ const Messages = () => {
 
       const connectionsWithDetails = await Promise.all(
         (connectionsData || []).map(async (conn) => {
-          const otherUserId = conn.student_id === user.id ? conn.alumni_id : conn.student_id;
+          const otherUserId = conn.requester_id === user.id ? conn.receiver_id : conn.requester_id;
 
           const { data: profileData } = await supabase
             .from("profiles")

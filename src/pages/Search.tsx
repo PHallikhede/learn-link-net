@@ -70,8 +70,8 @@ const Search = () => {
             const { data: connection } = await supabase
               .from("connections")
               .select("status")
-              .eq("student_id", user.id)
-              .eq("alumni_id", alumni.id)
+              .eq("requester_id", user.id)
+              .eq("receiver_id", alumni.id)
               .maybeSingle();
 
             return {
@@ -131,8 +131,8 @@ const Search = () => {
       // Fetch existing connections from current user
       const { data: connectionsData, error: connectionsError } = await supabase
         .from("connections")
-        .select("alumni_id, status")
-        .eq("student_id", user.id);
+        .select("receiver_id, status")
+        .eq("requester_id", user.id);
 
       if (connectionsError) throw connectionsError;
 
@@ -148,7 +148,7 @@ const Search = () => {
 
       const connectionStatusMap = new Map<string, string | null>();
       (connectionsData || []).forEach((c: any) => {
-        connectionStatusMap.set(c.alumni_id, c.status);
+        connectionStatusMap.set(c.receiver_id, c.status);
       });
 
       const members: AlumniProfile[] = (profilesData || [])
@@ -197,8 +197,8 @@ const Search = () => {
       const { error } = await supabase
         .from("connections")
         .insert({
-          student_id: user.id,
-          alumni_id: alumniId,
+          requester_id: user.id,
+          receiver_id: alumniId,
           status: "pending",
         });
 

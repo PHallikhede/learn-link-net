@@ -21,6 +21,7 @@ interface Connection {
     college: string;
   };
   other_user_role: string;
+  is_requester: boolean;
 }
 
 const Connections = () => {
@@ -51,18 +52,18 @@ const Connections = () => {
             event: "INSERT",
             schema: "public",
             table: "connections",
-            filter: `alumni_id=eq.${user.id}`,
+            filter: `receiver_id=eq.${user.id}`,
           },
           async (payload) => {
-            // Fetch student profile details
+            // Fetch requester profile details
             const { data: profile } = await supabase
               .from("profiles")
               .select("full_name")
-              .eq("id", payload.new.student_id)
+              .eq("id", payload.new.requester_id)
               .single();
 
             toast.success(
-              `New connection request from ${profile?.full_name || "a student"}!`,
+              `New connection request from ${profile?.full_name || "a user"}!`,
               { duration: 5000 }
             );
             setNewRequestCount((prev) => prev + 1);
@@ -75,29 +76,29 @@ const Connections = () => {
             event: "UPDATE",
             schema: "public",
             table: "connections",
-            filter: `student_id=eq.${user.id}`,
+            filter: `requester_id=eq.${user.id}`,
           },
           async (payload) => {
             if (payload.new.status === "accepted") {
               const { data: profile } = await supabase
                 .from("profiles")
                 .select("full_name")
-                .eq("id", payload.new.alumni_id)
+                .eq("id", payload.new.receiver_id)
                 .single();
 
               toast.success(
-                `${profile?.full_name || "Alumni"} accepted your connection request!`,
+                `${profile?.full_name || "User"} accepted your connection request!`,
                 { duration: 5000 }
               );
             } else if (payload.new.status === "rejected") {
               const { data: profile } = await supabase
                 .from("profiles")
                 .select("full_name")
-                .eq("id", payload.new.alumni_id)
+                .eq("id", payload.new.receiver_id)
                 .single();
 
               toast.error(
-                `${profile?.full_name || "Alumni"} declined your connection request`,
+                `${profile?.full_name || "User"} declined your connection request`,
                 { duration: 5000 }
               );
             }
@@ -121,29 +122,29 @@ const Connections = () => {
             event: "UPDATE",
             schema: "public",
             table: "connections",
-            filter: `student_id=eq.${user.id}`,
+            filter: `requester_id=eq.${user.id}`,
           },
           async (payload) => {
             if (payload.new.status === "accepted") {
               const { data: profile } = await supabase
                 .from("profiles")
                 .select("full_name")
-                .eq("id", payload.new.alumni_id)
+                .eq("id", payload.new.receiver_id)
                 .single();
 
               toast.success(
-                `${profile?.full_name || "Alumni"} accepted your connection request!`,
+                `${profile?.full_name || "User"} accepted your connection request!`,
                 { duration: 5000 }
               );
             } else if (payload.new.status === "rejected") {
               const { data: profile } = await supabase
                 .from("profiles")
                 .select("full_name")
-                .eq("id", payload.new.alumni_id)
+                .eq("id", payload.new.receiver_id)
                 .single();
 
               toast.error(
-                `${profile?.full_name || "Alumni"} declined your connection request`,
+                `${profile?.full_name || "User"} declined your connection request`,
                 { duration: 5000 }
               );
             }
@@ -165,15 +166,15 @@ const Connections = () => {
       const { data: connectionsData, error } = await supabase
         .from("connections")
         .select("*")
-        .or(`student_id.eq.${user.id},alumni_id.eq.${user.id}`);
+        .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`);
 
       if (error) throw error;
 
       // Fetch profile details for each connection
       const connectionsWithProfiles = await Promise.all(
         connectionsData.map(async (conn) => {
-          const otherUserId = conn.student_id === user.id ? conn.alumni_id : conn.student_id;
-          const otherUserRole = conn.student_id === user.id ? "alumni" : "student";
+          const otherUserId = conn.requester_id === user.id ? conn.receiver_id : conn.requester_id;
+          const isRequester = conn.requester_id === user.id;
 
           const { data: profile } = await supabase
             .from("profiles")
@@ -186,7 +187,8 @@ const Connections = () => {
             status: conn.status,
             created_at: conn.created_at,
             other_user: profile,
-            other_user_role: otherUserRole,
+            other_user_role: isRequester ? "receiver" : "requester",
+            is_requester: isRequester,
           };
         })
       );
@@ -270,9 +272,9 @@ const Connections = () => {
               <div className="mb-8">
                 <div className="flex items-center gap-3 mb-4">
                   <h2 className="text-2xl font-bold">
-                    {role === "alumni" ? "Pending Requests" : "Sent Requests"}
+                    Pending Requests
                   </h2>
-                  {role === "alumni" && newRequestCount > 0 && (
+                  {newRequestCount > 0 && (
                     <Badge variant="destructive" className="animate-pulse">
                       {newRequestCount} New
                     </Badge>
@@ -308,7 +310,7 @@ const Connections = () => {
                               </div>
 
                               <div className="flex gap-2 mt-4">
-                                {role === "alumni" ? (
+                                {!connection.is_requester ? (
                                   <>
                                     <Button
                                       size="sm"
@@ -334,7 +336,7 @@ const Connections = () => {
                                   </>
                                 ) : (
                                   <p className="text-sm text-muted-foreground">
-                                    Waiting for alumni to respond...
+                                    Waiting for response...
                                   </p>
                                 )}
                               </div>

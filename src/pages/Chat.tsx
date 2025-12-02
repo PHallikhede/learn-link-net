@@ -104,7 +104,7 @@ const Chat = () => {
       // First verify the connection exists and is accepted
       const { data: connection, error: connError } = await supabase
         .from("connections")
-        .select("status, student_id, alumni_id")
+        .select("status, requester_id, receiver_id")
         .eq("id", connectionId)
         .maybeSingle();
 
@@ -121,7 +121,7 @@ const Chat = () => {
       }
 
       // Check if user is part of this connection
-      if (connection.student_id !== user?.id && connection.alumni_id !== user?.id) {
+      if (connection.requester_id !== user?.id && connection.receiver_id !== user?.id) {
         console.error("User not part of connection");
         toast.error("You don't have access to this conversation");
         navigate("/connections");
