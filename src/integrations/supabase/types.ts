@@ -43,25 +43,25 @@ export type Database = {
       }
       connections: {
         Row: {
-          alumni_id: string
           created_at: string
           id: string
+          receiver_id: string
+          requester_id: string
           status: string | null
-          student_id: string
         }
         Insert: {
-          alumni_id: string
           created_at?: string
           id?: string
+          receiver_id: string
+          requester_id: string
           status?: string | null
-          student_id: string
         }
         Update: {
-          alumni_id?: string
           created_at?: string
           id?: string
+          receiver_id?: string
+          requester_id?: string
           status?: string | null
-          student_id?: string
         }
         Relationships: []
       }

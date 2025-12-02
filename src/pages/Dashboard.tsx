@@ -118,24 +118,24 @@ const Dashboard = () => {
         const { data: connectionRequests } = await supabase
           .from("connections")
           .select("*")
-          .eq("alumni_id", user.id)
+          .eq("receiver_id", user.id)
           .eq("status", "pending")
           .order("created_at", { ascending: false })
           .limit(3);
 
-        // Fetch student profiles for connection requests
+        // Fetch requester profiles for connection requests
         const activities = [];
         if (connectionRequests && connectionRequests.length > 0) {
           for (const req of connectionRequests) {
-            const { data: studentProfile } = await supabase
+            const { data: requesterProfile } = await supabase
               .from("profiles")
               .select("full_name")
-              .eq("id", req.student_id)
+              .eq("id", req.requester_id)
               .maybeSingle();
             
             activities.push({
               action: "New connection request from",
-              user: studentProfile?.full_name || "Unknown User",
+              user: requesterProfile?.full_name || "Unknown User",
               time: new Date(req.created_at).toLocaleDateString(),
             });
           }
@@ -166,8 +166,8 @@ const Dashboard = () => {
       const { error } = await supabase
         .from("connections")
         .insert({
-          student_id: user.id,
-          alumni_id: alumniId,
+          requester_id: user.id,
+          receiver_id: alumniId,
           status: "pending",
         });
 
