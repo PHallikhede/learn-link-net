@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { User, Mail, Building2, Calendar, Edit2, Save, Loader2 } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { User, Mail, Building2, Calendar, Edit2, Save, Loader2, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -19,6 +20,8 @@ const Profile = () => {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState({
     full_name: "",
     email: "",
@@ -32,6 +35,7 @@ const Profile = () => {
     job_title: "",
     company: "",
     graduation_year: "",
+    avatar_url: "",
   });
 
   useEffect(() => {
@@ -81,6 +85,7 @@ const Profile = () => {
             job_title: "",
             company: "",
             graduation_year: "",
+            avatar_url: profileData.avatar_url || "",
           });
         } else if (role === "alumni") {
           const { data: alumniData } = await supabase
@@ -102,6 +107,7 @@ const Profile = () => {
             job_title: alumniData?.job_title || "",
             company: alumniData?.company || "",
             graduation_year: alumniData?.graduation_year?.toString() || "",
+            avatar_url: profileData.avatar_url || "",
           });
         } else {
           // Admin or other roles - just show basic profile
@@ -118,6 +124,7 @@ const Profile = () => {
             job_title: "",
             company: "",
             graduation_year: "",
+            avatar_url: profileData.avatar_url || "",
           });
         }
         setLoading(false);
@@ -132,6 +139,68 @@ const Profile = () => {
       fetchProfile();
     }
   }, [user, role, roleLoading]);
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size must be less than 5MB");
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const filePath = `${user.id}/avatar.${fileExt}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      const avatarUrl = urlData.publicUrl + `?t=${Date.now()}`;
+
+      // Update profile with avatar URL
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: avatarUrl })
+        .eq("id", user.id);
+
+      if (updateError) throw updateError;
+
+      setProfile({ ...profile, avatar_url: avatarUrl });
+      toast.success("Profile picture updated!");
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      toast.error("Failed to upload profile picture");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -230,8 +299,33 @@ const Profile = () => {
           <Card className="md:col-span-1 shadow-elevated h-fit">
             <CardContent className="pt-6">
               <div className="flex flex-col items-center text-center">
-              <div className="w-24 h-24 rounded-full bg-gradient-accent flex items-center justify-center mb-4">
-                  <User className="w-12 h-12 text-secondary-foreground" />
+                <div className="relative mb-4">
+                  <Avatar className="w-24 h-24">
+                    <AvatarImage src={profile.avatar_url} alt={profile.full_name} />
+                    <AvatarFallback className="bg-gradient-accent text-secondary-foreground text-2xl">
+                      {getInitials(profile.full_name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleAvatarUpload}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="absolute bottom-0 right-0 rounded-full w-8 h-8"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingAvatar}
+                  >
+                    {uploadingAvatar ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Camera className="w-4 h-4" />
+                    )}
+                  </Button>
                 </div>
                 <h2 className="text-2xl font-bold mb-1">{profile.full_name}</h2>
                 <Badge className="mb-4">

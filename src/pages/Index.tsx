@@ -36,11 +36,10 @@ const Index = () => {
           .from("profiles")
           .select("*", { count: "exact", head: true });
 
-        // Fetch verified alumni
+        // Fetch total alumni (all alumni, not just verified)
         const { count: alumniCount } = await supabase
           .from("alumni_details")
-          .select("*", { count: "exact", head: true })
-          .eq("verification_status", "verified");
+          .select("*", { count: "exact", head: true });
 
         // Fetch accepted connections
         const { count: connectionsCount } = await supabase
