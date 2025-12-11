@@ -50,7 +50,7 @@ const Dashboard = () => {
         const { count: connectionsCount } = await supabase
           .from("connections")
           .select("*", { count: "exact", head: true })
-          .or(`student_id.eq.${user.id},alumni_id.eq.${user.id}`)
+          .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`)
           .eq("status", "accepted");
 
         // Fetch forum posts count
