@@ -70,7 +70,7 @@ const Messages = () => {
             event: '*',
             schema: 'public',
             table: 'connections',
-            filter: `student_id=eq.${user.id}`
+            filter: `requester_id=eq.${user.id}`
           },
           () => {
             fetchConnections();
@@ -82,7 +82,7 @@ const Messages = () => {
             event: '*',
             schema: 'public',
             table: 'connections',
-            filter: `alumni_id=eq.${user.id}`
+            filter: `receiver_id=eq.${user.id}`
           },
           () => {
             fetchConnections();
@@ -105,7 +105,7 @@ const Messages = () => {
         .from("connections")
         .select("*")
         .eq("status", "accepted")
-        .or(`student_id.eq.${user.id},alumni_id.eq.${user.id}`);
+        .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`);
 
       if (connectionsError) throw connectionsError;
 
